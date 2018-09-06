@@ -1,0 +1,77 @@
+export PROJECT=mongodb
+export ZONE=us-west1-a
+export CLUSTER=mongodb
+
+gcloud config set project $PROJECT
+gcloud config get-value project
+
+gcloud config set compute/zone $ZONE
+gcloud config get-value compute/zone
+
+gcloud config list
+
+gcloud container clusters create $CLUSTER --machine-type f1-micro
+gcloud container clusters list
+
+gcloud container clusters get-credentials $CLUSTER
+
+gcloud container clusters resize cluster-mongodb --size 4
+
+kubectl apply -f namespace.yaml
+kubectl get ns
+
+kubectl config set-context $(kubectl config current-context) --namespace=mongodb
+kubectl config view | grep namespace:
+
+kubectl apply -f gce-ssd-storageclass.yaml
+kubectl get sc
+
+#For MainDB servers
+gcloud compute disks create --size 10GB --type pd-ssd pd-ssd-disk-k8s-mongodb-daemonsl-10g-1
+gcloud compute disks create --size 10GB --type pd-ssd pd-ssd-disk-k8s-mongodb-daemonsl-10g-2
+
+#For Config servers
+gcloud compute disks create --size 5GB --type pd-ssd pd-ssd-disk-k8s-mongodb-daemonsl-5g-1
+
+kubectl apply -f ext4-gce-ssd-10G-persistentvolume-1.yaml
+kubectl apply -f ext4-gce-ssd-10G-persistentvolume-2.yaml
+kubectl apply -f ext4-gce-ssd-5G-persistentvolume-1.yaml
+kubectl get pv
+
+kubectl apply -f mongodb-configdb-service-stateful.yaml
+
+sed -e "s/shardX/shard1/g; s/ShardX/Shard1/g;" mongodb-maindb-service-stateful.yaml > tmp-mongodb-maindb-service-stateful.yaml
+kubectl apply -f tmp-mongodb-maindb-service-stateful.yaml
+
+sed -e "s/shardX/shard2/g; s/ShardX/Shard2/g;" mongodb-maindb-service-stateful.yaml > tmp-mongodb-maindb-service-stateful.yaml
+kubectl apply -f tmp-mongodb-maindb-service-stateful.yaml
+
+kubectl apply -f mongodb-mongos-deployment-service.yaml
+
+kubectl run -it mmm --image=mongo --restart=Never -- sh
+
+
+echo "Replicaset Init mongodb-configdb-0 "
+kubectl exec mongodb-configdb-0 -- mongo --port 27019 --eval "rs.initiate( { _id: \"configdb\", version: 1, members: [ {_id: 0, host: \"mongodb-configdb-0.mongodb-configdb-headless-service.mongodb.svc.cluster.local:27019\"}]});"
+
+
+echo "Replicaset Init mongodb-shard1-0 "
+kubectl exec mongodb-shard1-0 -- mongo --port 27017 --eval "rs.initiate({_id: \"Shard1\", version: 1, members: [ {_id: 0, host: \"mongodb-shard1-0.mongodb-shard1-headless-service.mongodb.svc.cluster.local:27017\"} ] });"
+
+echo "Replicaset Init mongodb-shard2-0 "  
+kubectl exec mongodb-shard2-0 -- mongo --port 27017 --eval "rs.initiate({_id: \"Shard2\", version: 1, members: [ {_id: 0, host: \"mongodb-shard2-0.mongodb-shard2-headless-service.mongodb.svc.cluster.local:27017\"} ] });"
+
+echo "Adding Shard 1 : Shard1 "
+kubectl exec $(kubectl get pod -l "tier=routers" -o jsonpath='{.items[0].metadata.name}') -- mongo --port 27017 --eval "sh.addShard(\"Shard1/mongodb-shard1-0.mongodb-shard1-headless-service.mongodb.svc.cluster.local:27017\");"
+
+echo "Adding Shard 2 : Shard2 "
+kubectl exec $(kubectl get pod -l "tier=routers" -o jsonpath='{.items[0].metadata.name}') -- mongo --port 27017 --eval "sh.addShard(\"Shard2/mongodb-shard2-0.mongodb-shard2-headless-service.mongodb.svc.cluster.local:27017\");"
+
+kubectl exec -it $(kubectl get pod -l "tier=routers" -o jsonpath='{.items[0].metadata.name}') -c mongos-container bash
+$ mongo
+> sh.enableSharding("<Database_name>");
+> sh.status();
+> use admin
+> db.admin.runCommand("getShardMap")
+
+
