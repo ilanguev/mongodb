@@ -2,7 +2,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: mongos-service
-  namespace: mongodb
+  namespace: NAMESPACE
   labels:
     name: mongos-service
 spec:
@@ -19,7 +19,7 @@ apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
   name: mongos
-  namespace: mongodb
+  namespace: NAMESPACE
 spec:
   replicas: 2
   template:
@@ -51,7 +51,7 @@ spec:
             - "--bind_ip"
             - "0.0.0.0"
             - "--configdb"
-            - "configdb/mongodb-configdb-0.mongodb-configdb-headless-service.mongodb.svc.cluster.local:27019"
+            - "configdb/mongodb-configdb-0.mongodb-configdb-headless-service.NAMESPACE.svc.cluster.local:27019"
           resources:
             requests:
               cpu: 50m

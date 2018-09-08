@@ -5,18 +5,16 @@ metadata:
     volume.beta.kubernetes.io/storage-class: fast
     volume.beta.kubernetes.io/storage-provisioner: kubernetes.io/gce-pd
   labels:
-    role: mongodb-shard1
-  name: mongo-shard1-persistent-storage-claim-mongodb-shard1-0
-  namespace: mongodb
+    role: mongodb-SHARD
+  name: mongo-SHARD-persistent-storage-claim-mongodb-SHARD-REPLICA
+  namespace: NAMESPACE
 spec:
   accessModes:
   - ReadWriteOnce
   resources:
     requests:
-      storage: 10Gi
-  volumeName: data-volume-k8s-mongodb-daemonsl-10g-1
-status:
+      storage: CAPACITY
+#  volumeName: k8s-mongodb-NAMESPACE-data-DISK  
+  status:
   accessModes:
   - ReadWriteOnce
-  capacity:
-    storage: 10Gi

@@ -1,35 +1,35 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: mongodb-shardX-headless-service
-  namespace: mongodb
+  name: mongodb-SHARD-headless-service
+  namespace: NAMESPACE
   labels:
-    name: mongodb-shardX
+    name: mongodb-SHARD
 spec:
   ports:
   - port: 27017
     targetPort: 27017
   clusterIP: None
   selector:
-    role: mongodb-shardX
+    role: mongodb-SHARD
 ---
 apiVersion: apps/v1beta2
 kind: StatefulSet
 metadata:
-  name: mongodb-shardX
-  namespace: mongodb
+  name: mongodb-SHARD
+  namespace: NAMESPACE
 spec:
   selector:
     matchLabels:
-      role: mongodb-shardX # has to match .spec.template.metadata.labels
-  serviceName: mongodb-shardX-headless-service
+      role: mongodb-SHARD # has to match .spec.template.metadata.labels
+  serviceName: mongodb-SHARD-headless-service
   replicas: 1
   template:
     metadata:
       labels:
-        role: mongodb-shardX
+        role: mongodb-SHARD
         tier: maindb
-        replicaset: ShardX
+        replicaset: SHARD
     spec:
       affinity:
         podAntiAffinity:
@@ -41,11 +41,11 @@ spec:
                 - key: replicaset
                   operator: In
                   values:
-                  - ShardX
+                  - ShardSHARD
               topologyKey: kubernetes.io/hostname
       terminationGracePeriodSeconds: 10
       containers:
-        - name: mongodb-shardX-container
+        - name: mongodb-shardSHARD-container
           image: mongo
           command:
             - "mongod"
@@ -54,7 +54,7 @@ spec:
             - "--bind_ip"
             - "0.0.0.0"
             - "--replSet"
-            - "ShardX"
+            - "SHARD"
             - "--dbpath"
             - "/mongo-disk"
           resources:
@@ -64,16 +64,16 @@ spec:
           ports:
             - containerPort: 27017
           volumeMounts:
-            - name: mongo-shardX-persistent-storage-claim
+            - name: mongo-SHARD-persistent-storage-claim
               mountPath: /mongo-disk
   volumeClaimTemplates:
   - metadata:
-      name: mongo-shardX-persistent-storage-claim
+      name: mongo-SHARD-persistent-storage-claim
       annotations:
         volume.beta.kubernetes.io/storage-class: "fast"
     spec:
       accessModes: [ "ReadWriteOnce" ]
       resources:
         requests:
-          storage: 10Gi
+          storage: CAPACITY
 
