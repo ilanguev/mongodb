@@ -95,7 +95,11 @@ pvs: data-pvs \
 	kubectl get pv -o wide
 
 data-pvs: config
-	$(call apply_pvs,${DATA_DISK_SUFFIXES},${DATA_PV_CAPACITY},${DATA_DISK_SIZE},data-persistentvolume.yaml)
+	$(call apply_pvs,${DATA_DISK_SUFFIXES},${DATA_PV_CAPACITY},${DATA_DISK_SIZE},data-persistent-volume.yaml)
 
 config-pvs: config
-	$(call apply_pvs,${CONFIG_DISK_SUFFIXES},${CONFIG_PV_CAPACITY},${CONFIG_DISK_SIZE},config-persistentvolume.yaml)
+	$(call apply_pvs,${CONFIG_DISK_SUFFIXES},${CONFIG_PV_CAPACITY},${CONFIG_DISK_SIZE},config-persistent-volume.yaml)
+
+configdb: namespace \
+          storage-class
+	sed "s/NAMESPACE/${NAMESPACE}/g; s/CAPACITY/${CONFIG_PV_CAPACITY}/g" mongodb-configdb-service-stateful.yaml|kubectl --namespace ${NAMESPACE} apply -f -
