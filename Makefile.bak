@@ -1,0 +1,53 @@
+PROJECT = proj-mongodb
+ZONE = us-west1-a
+CLUSTER = mongodb
+MACHINE_TYPE = f1-micro
+NUM_NODES = 4
+NAMESPACE = lvi123
+
+DISK_PREFIX = pd-ssd-disk-k8s-${CLUSTER}-${NAMESPACE}
+
+DISK_10G_SUFFIXES = 1 2
+DISKS_10G = $(addprefix ${DISK_PREFIX}-10g-, ${DISK_10G_SUFFIXES})
+DISKS_ALL = ${DISKS_10G}
+
+all: config \
+     namespace \
+     storage-class
+
+namespace: config
+	sed s/NAMESPACE/${NAMESPACE}/g namespace.yaml|kubectl apply -f -
+	kubectl get ns
+
+storage-class: namespace
+	kubectl apply -f gce-ssd-storageclass.yaml
+	kubectl get sc
+
+config:
+	gcloud config set project ${PROJECT}
+	gcloud config set compute/zone ${ZONE}
+
+cluster: config
+	gcloud container clusters create ${CLUSTER} --machine-type ${MACHINE_TYPE} --num-nodes=${NUM_NODES}
+	gcloud container clusters get-credentials ${CLUSTER}
+
+disks: config \
+       disks-10G
+
+define create_disk
+	gcloud compute disks create --size $(1) --type pd-ssd $(2)
+endef
+
+disks-10G:
+	$(foreach disk,${DISKS_10G},$(eval $(call create_disk,10GB,${disk})))
+
+#	for d in ${DISKS_10G} ; do \
+#		$(call create_disk 10GB,$${d}) ; \
+#	done
+
+disks-remove: config
+	for d in ${DISKS_ALL} ; do \
+		gcloud compute disks delete $$(d) ; \
+	done
+
+
