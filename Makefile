@@ -1,27 +1,37 @@
-PROJECT = proj-mongodb
-ZONE = us-west1-a
-CLUSTER = mongodb
-MACHINE_TYPE = f1-micro
-NUM_NODES = 4
-NAMESPACE = lvi123
+PROJECT=proj-mongodb
+ZONE=us-west1-a
+CLUSTER=mongodb
+MACHINE_TYPE=f1-micro
+NUM_NODES=4
+NAMESPACE=lvi123
 
-DISK_PREFIX = pd-ssd-disk-k8s-${CLUSTER}-${NAMESPACE}
+DISK_PREFIX=pd-ssd-disk-k8s-${CLUSTER}-${NAMESPACE}
 
-DISK_10G_SUFFIXES = 1 2
-DISKS_10G = $(addprefix ${DISK_PREFIX}-10g-, ${DISK_10G_SUFFIXES})
-DISK_5G_SUFFIXES = 1
-DISKS_5G = $(addprefix ${DISK_PREFIX}-5g-, ${DISK_5G_SUFFIXES})
-DISKS_ALL = ${DISKS_10G} ${DISKS_5G}
+define make_disk_names
+	$(addprefix ${DISK_PREFIX}-${1}-, ${2})
+endef
+
+DATA_DISK_SIZE=10g
+DATA_PV_CAPACITY=10Gi
+DATA_DISK_SUFFIXES=1 2
+CONFIG_DISK_SIZE=5g
+CONFIG_PV_CAPACITY=5Gi
+CONFIG_DISK_SUFFIXES=1
+
+DATA_DISKS=$(call make_disk_names,${DATA_DISK_SIZE},${DATA_DISK_SUFFIXES})
+CONFIG_DISKS=$(call make_disk_names,${CONFIG_DISK_SIZE},${CONFIG_DISK_SUFFIXES})
+DISKS_ALL=${DATA_DISKS} ${CONFIG_DISKS}
 
 all: config \
      namespace \
-     storage-class
+     storage-class \
+     pvs
 
 namespace: config
-	sed s/NAMESPACE/${NAMESPACE}/g namespace.yaml|kubectl apply -f -
+	sed "s/NAMESPACE/${NAMESPACE}/g" namespace.yaml|kubectl apply -f -
 	kubectl get ns
 
-storage-class: namespace
+storage-class: config
 	kubectl apply -f gce-ssd-storageclass.yaml
 	kubectl get sc
 
@@ -42,27 +52,50 @@ cluster: config
 cluster-delete: config
 	gcloud -q container clusters delete ${CLUSTER}
 
-disks: config \
-       disks-10G \
-       disks-5G
+disks: data-disks \
+       config-disks
 	gcloud compute disks list
 
-define create_disk
-	gcloud compute disks create --size $(1) --type pd-ssd $(2)
+define create_disks
+	for d in ${1}; do \
+		gcloud compute disks create --size $(2) --type pd-ssd $$d; \
+	done
 endef
 
-disks-10G:
-	for d in ${DISKS_10G}; do \
-		$(call create_disk,10G, $$d); \
-	done
+data-disks: config
+	$(call create_disks,${DATA_DISKS},${DATA_DISK_SIZE})
 
-disks-5G:
-	for d in ${DISKS_5G}; do \
-		$(call create_disk,5G, $$d); \
-	done
+config-disks: config
+	$(call create_disks,${CONFIG_DISKS},${CONFIG_DISK_SIZE})
 
-disks-delete:
-	for d in ${DISKS_ALL}; do \
+define delete_disks
+	for d in ${1}; do \
 		gcloud -q compute disks delete $$d; \
 	done
+endef
+
+disks-delete: data-disks-delete \
+              config-disks-delete
 	gcloud compute disks list
+
+data-disks-delete: config
+	$(call delete_disks,${DATA_DISKS})
+
+config-disks-delete: config
+	$(call delete_disks,${CONFIG_DISKS})
+
+define apply_pvs
+	for d in ${1}; do \
+		sed "s/CLUSTER/${CLUSTER}/g; s/NAMESPACE/${NAMESPACE}/g; s/CAPACITY/${2}/g; s/SIZE/${3}/g; s/DISK/$$d/g" ${4}|kubectl apply -f -; \
+	done
+endef
+
+pvs: data-pvs \
+     config-pvs
+	kubectl get pv -o wide
+
+data-pvs: config
+	$(call apply_pvs,${DATA_DISK_SUFFIXES},${DATA_PV_CAPACITY},${DATA_DISK_SIZE},data-persistentvolume.yaml)
+
+config-pvs: config
+	$(call apply_pvs,${CONFIG_DISK_SUFFIXES},${CONFIG_PV_CAPACITY},${CONFIG_DISK_SIZE},config-persistentvolume.yaml)
