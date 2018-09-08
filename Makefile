@@ -22,6 +22,8 @@ DATA_DISKS=$(call make_disk_names,${DATA_DISK_SIZE},${DATA_DISK_SUFFIXES})
 CONFIG_DISKS=$(call make_disk_names,${CONFIG_DISK_SIZE},${CONFIG_DISK_SUFFIXES})
 DISKS_ALL=${DATA_DISKS} ${CONFIG_DISKS}
 
+DATA_SHARDS=1 2
+
 all: config \
      namespace \
      storage-class \
@@ -103,3 +105,11 @@ config-pvs: config
 configdb: namespace \
           storage-class
 	sed "s/NAMESPACE/${NAMESPACE}/g; s/CAPACITY/${CONFIG_PV_CAPACITY}/g" mongodb-configdb-service-stateful.yaml|kubectl --namespace ${NAMESPACE} apply -f -
+
+pvcs: data-pvcs
+	kibectl --namespace ${NAMESPACE} get pvc -o wide
+
+data-pvcs: data-pvs
+	for s in ${DATA_SHARDS}; do \
+		sed "s/NAMESPACE/${NAMESPACE}/g; s/CAPACITY/${DATA_PV_CAPACITY}/g; s/SHARD/$$s/g; s/DISK/0/g" data-persistent-storage-claim.yaml|kubectl --namespace ${NAMESPACE} apply -f -; \
+	done
