@@ -1,33 +1,33 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: mongodb-configdb-headless-service
-  namespace: NAMESPACE
+  name: configdb
+  namespace: ilya-mongodb
   labels:
-    name: mongodb-configdb
+    name: configdb
 spec:
   ports:
   - port: 27019
     targetPort: 27019
   clusterIP: None
   selector:
-    role: mongodb-configdb
+    role: configdb
 ---
 apiVersion: apps/v1beta2
 kind: StatefulSet
 metadata:
-  name: mongodb-configdb
-  namespace: NAMESPACE
+  name: configdb
+  namespace: ilya-mongodb
 spec:
   selector:
     matchLabels:
-      role: mongodb-configdb # has to match .spec.template.metadata.labels
-  serviceName: mongodb-configdb-headless-service
+      role: configdb # has to match .spec.template.metadata.labels
+  serviceName: configdb
   replicas: 1
   template:
     metadata:
       labels:
-        role: mongodb-configdb
+        role: configdb
         tier: configdb
     spec:
       affinity:
@@ -44,7 +44,7 @@ spec:
               topologyKey: kubernetes.io/hostname
       terminationGracePeriodSeconds: 10
       containers:
-        - name: mongodb-configdb-container
+        - name: container-configdb
           image: mongo
           command:
             - "mongod"
@@ -64,17 +64,16 @@ spec:
           ports:
             - containerPort: 27019
           volumeMounts:
-            - name: mongodb-configdb-persistent-storage-claim
+            - name: pvc-config
               mountPath: /mongo-disk
   volumeClaimTemplates:
   - metadata:
-      name: mongodb-configdb-persistent-storage-claim
-      annotations:
-        volume.beta.kubernetes.io/storage-class: "fast"
+      name: pvc-config
     spec:
       accessModes: [ "ReadWriteOnce" ]
+      storageClassName: "sc-config"
       resources:
         requests:
-          storage: CAPACITY
+          storage: 5Gi
 
 

@@ -1,10 +1,4 @@
-PROJECT=${GOOGLE_CLOUD_PROJECT}
-ZONE=us-west1-a
-CLUSTER=mongodb
-#MACHINE_TYPE=f1-micro
-MACHINE_TYPE=g1-small
-NUM_NODES=4
-NAMESPACE=lvi123
+NAMESPACE=ilya-mongodb
 
 KUBECTL=kubectl
 K=${KUBECTL} --namespace ${NAMESPACE}
@@ -12,13 +6,14 @@ APPLY=${K} apply -f
 GET=${K} get -o wide
 DELETE=${K} delete
 EXEC=${K} exec
-GC=gcloud
 
 DISK_PREFIX=pd-ssd-disk-k8s-${CLUSTER}-${NAMESPACE}
 
 define make_disk_names
 	$(addprefix ${DISK_PREFIX}-${1}-, ${2})
 endef
+
+STORAGECLASS=gp2
 
 DATA_DISK_SIZE=10g
 DATA_PV_CAPACITY=10Gi
@@ -47,12 +42,12 @@ namespace: config
 	${GET} ns
 
 storage-class: config
-	${APPLY} gce-ssd-storageclass.yaml
-	${GET} sc
+#	${APPLY} ebs-gp2-storageclass.yaml
+#	${GET} sc
 
 config:
-	${GC} config set project ${PROJECT}
-	${GC} config set compute/zone ${ZONE}
+#	${GC} config set project ${PROJECT}
+#	${GC} config set compute/zone ${ZONE}
 
 delete: cluster-delete \
        disks-delete
