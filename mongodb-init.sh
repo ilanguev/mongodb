@@ -34,6 +34,9 @@ do
          "rs.initiate({_id: \"${shard}\", version: 1, members: [ {_id: 0, host:\"${shard_fqdn}:${MAINDB_PORT}\"} ] });"
 done
 
+# Sleep for a bit to let shards init
+sleep 10
+
 # Init mongos shard router
 mongos_pod=`${K} get pod -l tier=routers -o jsonpath='{.items[0].metadata.name}')`
 for shard in ${MAINDB_SHARDS}
@@ -49,7 +52,7 @@ done
 # Get mongos cluster IP
 mongos_ip=`${K} get service ${MONGOS_SERVICE} -o jsonpath='{.spec.clusterIP}'`
 
-echo "mongos:port=${mongos_ip}:{MONGOS_PORT}"
+echo "mongos:port=${mongos_ip}:${MONGOS_PORT}"
 
 # Enable sharding
 ${M} -host ${mongos_ip} -port ${MONGOS_PORT} --eval \
