@@ -1,0 +1,8 @@
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+provisioner: block.vsphere.csi.vmware.com
+metadata:
+  name: sc-mongodb
+parameters:
+  StoragePolicyName: "vSAN Default Storage Policy"
+

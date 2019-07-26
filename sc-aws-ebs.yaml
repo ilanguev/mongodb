@@ -2,9 +2,7 @@ kind: StorageClass
 apiVersion: storage.k8s.io/v1
 provisioner: kubernetes.io/aws-ebs
 metadata:
-#  namespace: ilya-mongodb
-  name: sc-data
+  name: sc-mongodb
 parameters:
   type: gp2
   fsType: ext4
-reclaimPolicy: Delete

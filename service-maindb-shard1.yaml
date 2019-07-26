@@ -71,7 +71,7 @@ spec:
       name: pvc-data-shard1
     spec:
       accessModes: [ "ReadWriteOnce" ]
-      storageClassName: "sc-data"
+      storageClassName: "sc-mongodb"
       resources:
         requests:
           storage: 10Gi

@@ -71,7 +71,7 @@ spec:
       name: pvc-config
     spec:
       accessModes: [ "ReadWriteOnce" ]
-      storageClassName: "sc-config"
+      storageClassName: "sc-mongodb"
       resources:
         requests:
           storage: 5Gi
