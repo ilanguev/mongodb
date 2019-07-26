@@ -26,6 +26,8 @@ mongos:
 	${K} apply -f service-mongos.yaml
 
 
+delete: clean
+
 clean: delete-mongos \
        delete-maindb \
        delete-configdb \

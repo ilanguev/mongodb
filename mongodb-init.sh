@@ -54,11 +54,21 @@ mongos_ip=`${K} get service ${MONGOS_SERVICE} -o jsonpath='{.spec.clusterIP}'`
 
 echo "mongos:port=${mongos_ip}:${MONGOS_PORT}"
 
-# Enable sharding
+# Enable sharding for myDB
 ${M} -host ${mongos_ip} -port ${MONGOS_PORT} --eval \
      "sh.enableSharding(\"myDB\");\
       sh.status();"
 
-# Do stuff
+# Check sharding for myDB
 ${M} -host ${mongos_ip} -port ${MONGOS_PORT} admin --eval \
       "db.admin.runCommand(\"getShardMap\");"
+
+# Set sharding strategy for myDB.posts
+${M} -host ${mongos_ip} -port ${MONGOS_PORT} myDB --eval \
+      "db.posts.ensureIndex( { _id : \"hashed\" } );\
+       sh.shardCollection(\"myDB.posts\", { \"_id\" : \"hashed\" });"
+
+
+
+
+
