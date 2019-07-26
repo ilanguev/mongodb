@@ -3,7 +3,7 @@
 from pymongo import MongoClient
 import uuid
 
-client = MongoClient('mongodb://10.244.104.202:27017')
+client = MongoClient('mongodb://10.244.41.118:27017')
 db = client.myDB
 
 posts = db.posts
